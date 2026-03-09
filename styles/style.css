@@ -1,0 +1,66 @@
+:root {
+    --cell-size: 60px;
+    --white-cell: #dfdfc4;
+    --black-cell: #343f42;
+    --board-border: #333;
+
+    --white-piece-color: #fff;
+    --white-piece-shadow: #ccc;
+
+    --black-piece-color: #333;
+    --black-piece-shadow: #000;
+
+    --selected-piece: #b84545;
+}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+.board {
+    display: grid;
+    grid-template-columns: repeat(8, var(--cell-size));
+    grid-template-rows: repeat(8, var(--cell-size));
+    border: 5px solid var(--board-border);
+    width: fit-content;
+    margin: 50px auto;
+}
+
+.cell {
+    width: var(-cell-size);
+    height: var(--cell-size);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.white-cell {
+    background-color: var(--white-cell)
+}
+
+.black-cell {
+    background-color: var(--black-cell);
+}
+
+.piece {
+    width: 80%;
+    height: 80%;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.white-piece {
+    background-color: var(--white-piece-color);
+    box-shadow: 0 4px var(--white-piece-shadow);
+}
+
+.black-piece {
+    background-color: var(--black-piece-color);
+    box-shadow: 0 4px var(--black-piece-shadow);
+}
+
+.selected {
+    outline: 4px solid var(--selected-piece);
+    transform: scale(1.1);
+}

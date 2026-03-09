@@ -1,0 +1,129 @@
+/* ============================
+   1. Box-sizing
+============================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+
+/* ============================
+   2. Remove default margins/paddings
+============================ */
+*:not(dialog) {
+  margin: 0;
+  padding: 0;
+}
+ul, ol {
+  list-style: none;
+}
+
+/* ============================
+   3. Root & HTML defaults
+============================ */
+html {
+  scroll-behavior: smooth;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+}
+
+/* ============================
+   4. Body defaults
+============================ */
+body {
+  min-height: 100vh;
+  text-rendering: optimizeLegibility;
+  background-color: #fff;
+  color: #111;
+}
+
+/* ============================
+   5. Media & images
+============================ */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================
+   6. Typography
+============================ */
+p, h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+}
+p {
+  text-wrap: pretty;
+}
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+  font-weight: 600;
+}
+
+/* ============================
+   7. Links
+============================ */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ============================
+   8. Forms
+============================ */
+input, button, textarea, select {
+  font: inherit;
+  border: none;
+  background: none;
+  outline: none;
+  appearance: none;
+}
+
+/* ============================
+   9. Buttons
+============================ */
+button {
+  cursor: pointer;
+  
+  padding: 0;
+}
+
+/* ============================
+   10. Tables
+============================ */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* ============================
+   11. Root stacking context
+============================ */
+#root, #__next {
+  isolation: isolate;
+}
+
+/* ============================
+   12. Accessibility & motion
+============================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* reset accordion */
+
+summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
