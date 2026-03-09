@@ -12,22 +12,25 @@
 
     --selected-piece: #b84545;
 }
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
-.board {
+
+#board-game {
     display: grid;
     grid-template-columns: repeat(8, var(--cell-size));
     grid-template-rows: repeat(8, var(--cell-size));
     border: 5px solid var(--board-border);
     width: fit-content;
     margin: 50px auto;
+    user-select: none;
 }
 
 .cell {
-    width: var(-cell-size);
+    width: var(--cell-size);
     height: var(--cell-size);
     display: flex;
     justify-content: center;
@@ -35,7 +38,7 @@
 }
 
 .white-cell {
-    background-color: var(--white-cell)
+    background-color: var(--white-cell);
 }
 
 .black-cell {
@@ -47,7 +50,8 @@
     height: 80%;
     border-radius: 50%;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: transform 0.2s, outline 0.2s;
+    position: relative;
 }
 
 .white-piece {
@@ -62,5 +66,7 @@
 
 .selected {
     outline: 4px solid var(--selected-piece);
+    outline-offset: 2px;
     transform: scale(1.1);
+    z-index: 10;
 }
