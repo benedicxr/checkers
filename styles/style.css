@@ -70,3 +70,18 @@
     transform: scale(1.1);
     z-index: 10;
 }
+
+.available-step {
+    position: relative;
+}
+
+.available-step::after {
+    content: '';
+    display: block;
+    width: 15px;
+    height: 15px;
+    background-color: var(--selected-piece);
+    border-radius: 50%;
+    position: absolute;
+    poointer-events: none;
+}
