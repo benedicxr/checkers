@@ -1,10 +1,11 @@
-import {CSS_CLASSES} from "../constants.js";
+import { GAME_CONFIG } from "../constants.js";
 
 export class CheckerController {
     #model;
     #view;
     #selectedCoords = null;
     #availableMoves = [];
+    #turnIndicator;
 
     constructor(model, view) {
         this.#model = model;
@@ -13,8 +14,16 @@ export class CheckerController {
     }
 
     #init() {
+        this.#turnIndicator = document.getElementById("turn-indicator");
         this.#view.bindCellClick((r, c) => this.#handleCellClick(r, c));
         this.#view.render(this.#model.board);
+        this.#updateTurnIndicator();
+    }
+
+    #updateTurnIndicator() {
+        if (!this.#turnIndicator) return;
+        const label = this.#model.turn === GAME_CONFIG.WHITE_PLAYER ? "Хід: білих" : "Хід: чорних";
+        this.#turnIndicator.textContent = label;
     }
 
     #handleCellClick(row, col) {
@@ -25,6 +34,7 @@ export class CheckerController {
             this.#model.movePiece(this.#selectedCoords, {r: row, c: col}, clickedMove);
             this.#resetSelection();
             this.#view.render(this.#model.board);
+            this.#updateTurnIndicator();
             return;
         }
 
