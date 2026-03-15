@@ -9,7 +9,15 @@
     <title>Checkers</title>
 </head>
 <body>
-    <p id="turn-indicator"></p>
-    <div id="board-game" class="board"></div>
+    <div class="app">
+        <header class="topbar">
+            <div class="brand">
+                <h1 class="title">Checkers</h1>
+                <div id="turn-indicator" class="turn" aria-live="polite"></div>
+            </div>
+            <button id="undo-btn" class="btn" type="button">Undo</button>
+        </header>
+        <div id="board-game" class="board" aria-label="Checkers board"></div>
+    </div>
 </body>
 </html>

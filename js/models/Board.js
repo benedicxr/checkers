@@ -46,7 +46,7 @@ export class Board {
             Object.freeze(
                 row.map(cell => {
                     if (!cell) return null;
-                    return Object.freeze({ color: cell.color, isKing: cell.isKing });
+                    return Object.freeze({ id: cell.id, color: cell.color, isKing: cell.isKing });
                 })
             )
         );

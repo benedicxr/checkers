@@ -1,12 +1,19 @@
-import {GAME_CONFIG, GAME_RULES, CSS_CLASSES} from "../constants.js";
+import { GAME_CONFIG, GAME_RULES, CSS_CLASSES } from "../constants.js";
 
 export class CheckerView {
     #boardElement;
+    #turnElement;
+    #undoButton;
+    #overlayElement;
     #onCellClick = null;
 
-    constructor(elementId) {
-        this.#boardElement = document.getElementById(elementId);
+    constructor(boardElementId, { turnElementId = null, undoButtonId = null } = {}) {
+        this.#boardElement = document.getElementById(boardElementId);
+        this.#turnElement = turnElementId ? document.getElementById(turnElementId) : null;
+        this.#undoButton = undoButtonId ? document.getElementById(undoButtonId) : null;
+
         this.#createStaticGrid();
+        this.#ensureOverlay();
         this.#attachListeners();
     }
 
@@ -14,8 +21,23 @@ export class CheckerView {
         this.#onCellClick = handler;
     }
 
+    bindUndoClick(handler) {
+        if (!this.#undoButton) return;
+        this.#undoButton.addEventListener("click", handler);
+    }
+
+    setUndoEnabled(enabled) {
+        if (!this.#undoButton) return;
+        this.#undoButton.disabled = !enabled;
+    }
+
+    setTurn(turn) {
+        if (!this.#turnElement) return;
+        this.#turnElement.textContent = turn === GAME_CONFIG.WHITE_PLAYER ? "Turn: White" : "Turn: Black";
+    }
+
     #attachListeners() {
-        this.#boardElement.addEventListener('click', (event) => {
+        this.#boardElement.addEventListener("click", (event) => {
             if (!this.#onCellClick) return;
 
             const cell = event.target.closest(`.${CSS_CLASSES.CELL}`);
@@ -32,7 +54,7 @@ export class CheckerView {
     #createStaticGrid() {
         for (let r = 0; r < GAME_CONFIG.ROWS; r++) {
             for (let c = 0; c < GAME_CONFIG.COLS; c++) {
-                const cell = document.createElement('div');
+                const cell = document.createElement("div");
                 cell.classList.add(CSS_CLASSES.CELL);
                 cell.dataset.row = r;
                 cell.dataset.col = c;
@@ -44,10 +66,20 @@ export class CheckerView {
         }
     }
 
-    render(boardModel) {
+    #ensureOverlay() {
+        this.#overlayElement = document.createElement("div");
+        this.#overlayElement.className = "overlay";
+        this.#boardElement.appendChild(this.#overlayElement);
+    }
+
+    render(boardModel, { animate = true } = {}) {
+        const oldPieces = [...this.#boardElement.querySelectorAll(`.${CSS_CLASSES.PIECE}[data-id]`)];
+        const oldRects = new Map(oldPieces.map(p => [p.dataset.id, p.getBoundingClientRect()]));
+
         boardModel.forEach((row, rowIndex) => {
             row.forEach((checker, colIndex) => {
                 const cell = this.#boardElement.querySelector(`[data-row="${rowIndex}"][data-col="${colIndex}"]`);
+                if (!cell) return;
 
                 cell.replaceChildren();
 
@@ -55,6 +87,51 @@ export class CheckerView {
                     const piece = this.#createPiece(checker);
                     cell.appendChild(piece);
                 }
+            });
+        });
+
+        if (!animate) return;
+
+        const boardRect = this.#boardElement.getBoundingClientRect();
+        const newPieces = [...this.#boardElement.querySelectorAll(`.${CSS_CLASSES.PIECE}[data-id]`)];
+        const newRects = new Map(newPieces.map(p => [p.dataset.id, p.getBoundingClientRect()]));
+
+        this.#overlayElement.replaceChildren();
+        oldRects.forEach((rect, id) => {
+            if (newRects.has(id)) return;
+
+            const oldEl = oldPieces.find(p => p.dataset.id === id);
+            const ghost = document.createElement("div");
+            ghost.className = oldEl ? oldEl.className : CSS_CLASSES.PIECE;
+            ghost.classList.add("ghost");
+            ghost.style.left = `${rect.left - boardRect.left}px`;
+            ghost.style.top = `${rect.top - boardRect.top}px`;
+            ghost.style.width = `${rect.width}px`;
+            ghost.style.height = `${rect.height}px`;
+            this.#overlayElement.appendChild(ghost);
+
+            requestAnimationFrame(() => ghost.classList.add("ghost-out"));
+        });
+
+        newPieces.forEach(pieceEl => {
+            const id = pieceEl.dataset.id;
+            const oldRect = oldRects.get(id);
+            if (!oldRect) {
+                pieceEl.classList.add("spawn");
+                requestAnimationFrame(() => pieceEl.classList.remove("spawn"));
+                return;
+            }
+
+            const newRect = newRects.get(id);
+            const dx = oldRect.left - newRect.left;
+            const dy = oldRect.top - newRect.top;
+            if (dx === 0 && dy === 0) return;
+
+            pieceEl.style.transition = "transform 0s";
+            pieceEl.style.transform = `translate(${dx}px, ${dy}px)`;
+            requestAnimationFrame(() => {
+                pieceEl.style.transition = "";
+                pieceEl.style.transform = "";
             });
         });
     }
@@ -66,9 +143,9 @@ export class CheckerView {
     #createPiece(checker) {
         const piece = document.createElement("div");
         piece.classList.add(CSS_CLASSES.PIECE);
-        piece.classList.add(
-            checker.color === GAME_CONFIG.WHITE_PLAYER ? CSS_CLASSES.WHITE_PIECE : CSS_CLASSES.BLACK_PIECE
-        );
+        piece.classList.add(checker.color === GAME_CONFIG.WHITE_PLAYER ? CSS_CLASSES.WHITE_PIECE : CSS_CLASSES.BLACK_PIECE);
+        if (checker.isKing) piece.classList.add(CSS_CLASSES.KING);
+        if (checker.id != null) piece.dataset.id = String(checker.id);
         return piece;
     }
 
@@ -79,24 +156,30 @@ export class CheckerView {
         if (row === null || col === null) return;
 
         const targetCell = this.#boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-        if (targetCell) {
-        const piece = targetCell.querySelector(`.${CSS_CLASSES.PIECE}`);
-            if (piece) {
-                piece.classList.add(CSS_CLASSES.SELECTED);
-            }
-        }
+        const piece = targetCell?.querySelector(`.${CSS_CLASSES.PIECE}`);
+        if (piece) piece.classList.add(CSS_CLASSES.SELECTED);
     }
 
     highlightMoves(moves) {
         this.#boardElement.querySelectorAll(`.${CSS_CLASSES.AVAILABLE_STEP}`)
-        .forEach(el => el.classList.remove(CSS_CLASSES.AVAILABLE_STEP));
+            .forEach(el => el.classList.remove(CSS_CLASSES.AVAILABLE_STEP, CSS_CLASSES.AVAILABLE_MOVE, CSS_CLASSES.AVAILABLE_CAPTURE));
 
         moves.forEach(move => {
             const cell = this.#boardElement.querySelector(`[data-row="${move.r}"][data-col="${move.c}"]`);
-            if (cell) {
-                cell.classList.add(CSS_CLASSES.AVAILABLE_STEP);
-            }
+            if (!cell) return;
+            cell.classList.add(CSS_CLASSES.AVAILABLE_STEP);
+            cell.classList.add(move.type === "jump" ? CSS_CLASSES.AVAILABLE_CAPTURE : CSS_CLASSES.AVAILABLE_MOVE);
         });
     }
 
+    highlightCapturablePieces(coordsList) {
+        this.#boardElement.querySelectorAll(`.${CSS_CLASSES.PIECE}.${CSS_CLASSES.CAPTURABLE}`)
+            .forEach(el => el.classList.remove(CSS_CLASSES.CAPTURABLE));
+
+        coordsList.forEach(({ r, c }) => {
+            const cell = this.#boardElement.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+            const piece = cell?.querySelector(`.${CSS_CLASSES.PIECE}`);
+            if (piece) piece.classList.add(CSS_CLASSES.CAPTURABLE);
+        });
+    }
 }

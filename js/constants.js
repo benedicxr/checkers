@@ -17,6 +17,10 @@ export const GAME_RULES = {
     BLACK_DIRECTION: 1,
 
     SIDES: [-1, 1],
+
+    MEN_CAN_CAPTURE_BACKWARDS: true,
+
+    FLYING_KINGS: true,
 };
 
 export const CSS_CLASSES = {
@@ -26,6 +30,10 @@ export const CSS_CLASSES = {
     PIECE: 'piece',
     WHITE_PIECE: 'white-piece',
     BLACK_PIECE: 'black-piece',
+    KING: 'king',
     SELECTED: 'selected',
     AVAILABLE_STEP: 'available-step',
+    AVAILABLE_MOVE: 'available-move',
+    AVAILABLE_CAPTURE: 'available-capture',
+    CAPTURABLE: 'capturable',
 };

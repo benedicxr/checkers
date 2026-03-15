@@ -1,11 +1,13 @@
-import { GAME_CONFIG } from "../constants.js";
-
 export class CheckerController {
     #model;
     #view;
+
     #selectedCoords = null;
     #availableMoves = [];
-    #turnIndicator;
+
+    #mustContinueCapture = false;
+
+    #forcedCapturePieces = [];
 
     constructor(model, view) {
         this.#model = model;
@@ -14,40 +16,98 @@ export class CheckerController {
     }
 
     #init() {
-        this.#turnIndicator = document.getElementById("turn-indicator");
         this.#view.bindCellClick((r, c) => this.#handleCellClick(r, c));
-        this.#view.render(this.#model.board);
-        this.#updateTurnIndicator();
-    }
-
-    #updateTurnIndicator() {
-        if (!this.#turnIndicator) return;
-        const label = this.#model.turn === GAME_CONFIG.WHITE_PLAYER ? "Хід: білих" : "Хід: чорних";
-        this.#turnIndicator.textContent = label;
+        this.#view.bindUndoClick(() => this.#handleUndo());
+        this.#renderAndSyncUI({ animate: false });
     }
 
     #handleCellClick(row, col) {
-        const piece = this.#model.getPiece(row, col);
         const clickedMove = this.#availableMoves.find(m => m.r === row && m.c === col);
-
         if (clickedMove) {
-            this.#model.movePiece(this.#selectedCoords, {r: row, c: col}, clickedMove);
-            this.#resetSelection();
-            this.#view.render(this.#model.board);
-            this.#updateTurnIndicator();
+            this.#applyMove(clickedMove, { r: row, c: col });
             return;
         }
 
-        if ( piece && piece.color == this.#model.turn) {
-            this.#selectedCoords = {r: row, c: col};
-            this.#availableMoves = this.#model.getValidMoves(row, col);
-
-            this.#view.highlightCell(row, col);
-            this.#view.highlightMoves(this.#availableMoves);
-        } else {
-            this.#resetSelection();
+        if (this.#mustContinueCapture) {
+            return;
         }
+
+        const piece = this.#model.getPiece(row, col);
+        if (!piece || piece.color !== this.#model.turn) {
+            this.#resetSelection();
+            return;
+        }
+
+        const mustCapture = this.#model.playerHasCapture(this.#model.turn);
+        if (mustCapture) {
+            const canThisCapture = this.#forcedCapturePieces.some(p => p.r === row && p.c === col);
+            if (!canThisCapture) {
+                this.#resetSelection();
+                return;
+            }
+        }
+
+        this.#selectedCoords = { r: row, c: col };
+        this.#availableMoves = this.#model.getValidMoves(row, col, { mustCapture });
+
+        this.#view.highlightCell(row, col);
+        this.#view.highlightMoves(this.#availableMoves);
     }
+
+    #applyMove(move, to) {
+        const from = this.#selectedCoords;
+        if (!from) return;
+
+        if (!this.#mustContinueCapture) {
+            this.#model.pushHistory();
+        }
+
+        if (move.type === "move") {
+            this.#model.applyMove(from, to, move, { switchTurn: true });
+            this.#mustContinueCapture = false;
+            this.#resetSelection();
+            this.#renderAndSyncUI();
+            return;
+        }
+
+        this.#model.applyMove(from, to, move, { switchTurn: false });
+        this.#selectedCoords = { r: to.r, c: to.c };
+
+        const nextCaptures = this.#model.getCaptures(to.r, to.c);
+        if (nextCaptures.length > 0) {
+            this.#mustContinueCapture = true;
+            this.#availableMoves = nextCaptures;
+            this.#renderAndSyncUI();
+            this.#view.highlightCell(to.r, to.c);
+            this.#view.highlightMoves(this.#availableMoves);
+            this.#view.highlightCapturablePieces([{ r: to.r, c: to.c }]);
+            return;
+        }
+
+        this.#model.endTurn();
+        this.#mustContinueCapture = false;
+        this.#resetSelection();
+        this.#renderAndSyncUI();
+    }
+
+    #handleUndo() {
+        if (!this.#model.undo()) return;
+        this.#mustContinueCapture = false;
+        this.#resetSelection();
+        this.#renderAndSyncUI({ animate: false });
+    }
+
+    #renderAndSyncUI({ animate = true } = {}) {
+        this.#view.render(this.#model.board, { animate });
+        this.#view.setTurn(this.#model.turn);
+
+        const mustCapture = this.#model.playerHasCapture(this.#model.turn);
+        this.#forcedCapturePieces = mustCapture ? this.#model.getCapturingPieces(this.#model.turn) : [];
+        this.#view.highlightCapturablePieces(mustCapture ? this.#forcedCapturePieces : []);
+
+        this.#view.setUndoEnabled(this.#model.canUndo());
+    }
+
     #resetSelection() {
         this.#selectedCoords = null;
         this.#availableMoves = [];

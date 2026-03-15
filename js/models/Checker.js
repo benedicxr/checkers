@@ -1,7 +1,8 @@
 export class Checker {
-    constructor(color) {
+    constructor(color, { id, isKing = false } = {}) {
+        this.id = id;
         this.color = color;
-        this.isKing = false;
+        this.isKing = isKing;
     }
 }
 
