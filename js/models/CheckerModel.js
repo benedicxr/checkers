@@ -41,6 +41,45 @@ export class CheckerModel {
         return this.#turn;
     }
 
+    countPieces(player) {
+        let count = 0;
+        for (let r = 0; r < GAME_CONFIG.ROWS; r++) {
+            for (let c = 0; c < GAME_CONFIG.COLS; c++) {
+                const p = this.#board.getPiece(r, c);
+                if (p && p.color === player) count++;
+            }
+        }
+        return count;
+    }
+
+    playerHasAnyMove(player) {
+        if (MoveEngine.playerHasCapture(this.#board, player)) return true;
+
+        for (let r = 0; r < GAME_CONFIG.ROWS; r++) {
+            for (let c = 0; c < GAME_CONFIG.COLS; c++) {
+                const p = this.#board.getPiece(r, c);
+                if (!p || p.color !== player) continue;
+                if (MoveEngine.getQuietMovesForPiece(this.#board, player, r, c).length > 0) return true;
+            }
+        }
+        return false;
+    }
+
+    getWinner() {
+        const whiteCount = this.countPieces(GAME_CONFIG.WHITE_PLAYER);
+        const blackCount = this.countPieces(GAME_CONFIG.BLACK_PLAYER);
+
+        if (whiteCount === 0 && blackCount === 0) return null;
+        if (whiteCount === 0) return GAME_CONFIG.BLACK_PLAYER;
+        if (blackCount === 0) return GAME_CONFIG.WHITE_PLAYER;
+
+        if (!this.playerHasAnyMove(this.#turn)) {
+            return this.#turn === GAME_CONFIG.WHITE_PLAYER ? GAME_CONFIG.BLACK_PLAYER : GAME_CONFIG.WHITE_PLAYER;
+        }
+
+        return null;
+    }
+
     playerHasCapture(player = this.#turn) {
         return MoveEngine.playerHasCapture(this.#board, player);
     }
@@ -50,7 +89,6 @@ export class CheckerModel {
     }
 
     getValidMoves(row, col, { mustCapture = false } = {}) {
-        // If the player has at least one capture, only captures are legal.
         const capturesOnly = mustCapture || this.playerHasCapture(this.#turn);
         return MoveEngine.getValidMoves(this.#board, this.#turn, row, col, { capturesOnly });
     }
@@ -62,16 +100,13 @@ export class CheckerModel {
     applyMove(from, to, moveDetails, { switchTurn = true } = {}) {
         const movedPiece = this.#board.movePiece(from, to);
 
-        let captured = null;
         if (moveDetails.type === 'jump') {
             this.#board.removePiece(moveDetails.target.r, moveDetails.target.c);
-            captured = { r: moveDetails.target.r, c: moveDetails.target.c };
         }
 
-        const promoted = this.#maybePromote(to.r, movedPiece);
+        this.#maybePromote(to.r, movedPiece);
 
         if (switchTurn) this.endTurn();
-        return { captured, promoted };
     }
 
     endTurn() {

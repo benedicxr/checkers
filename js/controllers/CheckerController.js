@@ -9,6 +9,8 @@ export class CheckerController {
 
     #forcedCapturePieces = [];
 
+    #gameOver = false;
+
     constructor(model, view) {
         this.#model = model;
         this.#view = view;
@@ -22,6 +24,8 @@ export class CheckerController {
     }
 
     #handleCellClick(row, col) {
+        if (this.#gameOver) return;
+
         const clickedMove = this.#availableMoves.find(m => m.r === row && m.c === col);
         if (clickedMove) {
             this.#applyMove(clickedMove, { r: row, c: col });
@@ -99,6 +103,20 @@ export class CheckerController {
 
     #renderAndSyncUI({ animate = true } = {}) {
         this.#view.render(this.#model.board, { animate });
+
+        const winner = this.#model.getWinner();
+        if (winner) {
+            this.#gameOver = true;
+            this.#mustContinueCapture = false;
+            this.#resetSelection();
+            this.#forcedCapturePieces = [];
+            this.#view.highlightCapturablePieces([]);
+            this.#view.setWinner(winner);
+            this.#view.setUndoEnabled(this.#model.canUndo());
+            return;
+        }
+
+        this.#gameOver = false;
         this.#view.setTurn(this.#model.turn);
 
         const mustCapture = this.#model.playerHasCapture(this.#model.turn);

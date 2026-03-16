@@ -33,7 +33,14 @@ export class CheckerView {
 
     setTurn(turn) {
         if (!this.#turnElement) return;
+        this.#turnElement.classList.remove("winner");
         this.#turnElement.textContent = turn === GAME_CONFIG.WHITE_PLAYER ? "Turn: White" : "Turn: Black";
+    }
+
+    setWinner(winner) {
+        if (!this.#turnElement) return;
+        this.#turnElement.classList.add("winner");
+        this.#turnElement.textContent = winner === GAME_CONFIG.WHITE_PLAYER ? "Winner: White" : "Winner: Black";
     }
 
     #attachListeners() {
@@ -129,6 +136,7 @@ export class CheckerView {
 
             pieceEl.style.transition = "transform 0s";
             pieceEl.style.transform = `translate(${dx}px, ${dy}px)`;
+            pieceEl.getBoundingClientRect();
             requestAnimationFrame(() => {
                 pieceEl.style.transition = "";
                 pieceEl.style.transform = "";

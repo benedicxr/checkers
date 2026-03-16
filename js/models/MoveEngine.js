@@ -133,7 +133,6 @@ export class MoveEngine {
             let r = row + dr;
             let c = col + dc;
 
-            // Skip empty squares until we see the first piece or edge.
             while (board.isInside(r, c) && !board.getPiece(r, c)) {
                 r += dr;
                 c += dc;
@@ -143,7 +142,7 @@ export class MoveEngine {
             const target = board.getPiece(r, c);
             if (!target || target.color === piece.color) continue;
 
-            // Squares beyond the captured piece are valid landings until blocked.
+
             let landR = r + dr;
             let landC = c + dc;
             while (board.isInside(landR, landC) && !board.getPiece(landR, landC)) {
