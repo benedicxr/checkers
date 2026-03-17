@@ -147,14 +147,8 @@ export class CheckerModel {
 
     #maybePromote(row, piece) {
         if (!piece || piece.isKing) return false;
-        if (piece.color === GAME_CONFIG.WHITE_PLAYER && row === 0) {
-            piece.isKing = true;
-            return true;
-        }
-        if (piece.color === GAME_CONFIG.BLACK_PLAYER && row === GAME_CONFIG.ROWS - 1) {
-            piece.isKing = true;
-            return true;
-        }
+        if (piece.color === GAME_CONFIG.WHITE_PLAYER && row === 0) return piece.promote();
+        if (piece.color === GAME_CONFIG.BLACK_PLAYER && row === GAME_CONFIG.ROWS - 1) return piece.promote();
         return false;
     }
 
