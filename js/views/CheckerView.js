@@ -4,13 +4,15 @@ export class CheckerView {
     #boardElement;
     #turnElement;
     #undoButton;
+    #newGameButton;
     #overlayElement;
     #onCellClick = null;
 
-    constructor(boardElementId, { turnElementId = null, undoButtonId = null } = {}) {
+    constructor(boardElementId, { turnElementId = null, undoButtonId = null, newGameButtonId = null } = {}) {
         this.#boardElement = document.getElementById(boardElementId);
         this.#turnElement = turnElementId ? document.getElementById(turnElementId) : null;
         this.#undoButton = undoButtonId ? document.getElementById(undoButtonId) : null;
+        this.#newGameButton = newGameButtonId ? document.getElementById(newGameButtonId) : null;
 
         this.#createStaticGrid();
         this.#ensureOverlay();
@@ -26,9 +28,19 @@ export class CheckerView {
         this.#undoButton.addEventListener("click", handler);
     }
 
+    bindNewGameClick(handler) {
+        if (!this.#newGameButton) return;
+        this.#newGameButton.addEventListener("click", handler);
+    }
+
     setUndoEnabled(enabled) {
         if (!this.#undoButton) return;
         this.#undoButton.disabled = !enabled;
+    }
+
+    setNewGameEnabled(enabled) {
+        if (!this.#newGameButton) return;
+        this.#newGameButton.disabled = !enabled;
     }
 
     setTurn(turn) {

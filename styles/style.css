@@ -62,6 +62,14 @@ body {
     margin-bottom: 14px;
 }
 
+.actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
 .brand {
     display: flex;
     flex-direction: column;

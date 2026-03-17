@@ -10,6 +10,10 @@ export class CheckerModel {
     #nextId;
 
     constructor() {
+        this.reset();
+    }
+
+    reset() {
         this.#board = new Board();
         this.#nextId = 1;
         this.#initializeModel();

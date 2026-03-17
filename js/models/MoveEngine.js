@@ -1,6 +1,13 @@
 import { GAME_CONFIG, GAME_RULES } from "../constants.js";
 
 export class MoveEngine {
+    static #DIAGONAL_DELTAS = Object.freeze([
+        Object.freeze({ dr: -1, dc: -1 }),
+        Object.freeze({ dr: -1, dc: 1 }),
+        Object.freeze({ dr: 1, dc: -1 }),
+        Object.freeze({ dr: 1, dc: 1 }),
+    ]);
+
     static getValidMoves(board, turn, row, col, { capturesOnly = false } = {}) {
         const piece = board.getPiece(row, col);
         if (!piece || piece.color !== turn) return [];
@@ -101,14 +108,8 @@ export class MoveEngine {
 
     static #getFlyingKingMoves(board, row, col) {
         const moves = [];
-        const deltas = [
-            { dr: -1, dc: -1 },
-            { dr: -1, dc: 1 },
-            { dr: 1, dc: -1 },
-            { dr: 1, dc: 1 },
-        ];
 
-        for (const { dr, dc } of deltas) {
+        for (const { dr, dc } of this.#DIAGONAL_DELTAS) {
             let r = row + dr;
             let c = col + dc;
             while (board.isInside(r, c) && !board.getPiece(r, c)) {
@@ -122,14 +123,8 @@ export class MoveEngine {
 
     static #getFlyingKingCaptures(board, piece, row, col) {
         const captures = [];
-        const deltas = [
-            { dr: -1, dc: -1 },
-            { dr: -1, dc: 1 },
-            { dr: 1, dc: -1 },
-            { dr: 1, dc: 1 },
-        ];
 
-        for (const { dr, dc } of deltas) {
+        for (const { dr, dc } of this.#DIAGONAL_DELTAS) {
             let r = row + dr;
             let c = col + dc;
 
@@ -155,4 +150,3 @@ export class MoveEngine {
         return captures;
     }
 }
-

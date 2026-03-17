@@ -20,6 +20,7 @@ export class CheckerController {
     #init() {
         this.#view.bindCellClick((r, c) => this.#handleCellClick(r, c));
         this.#view.bindUndoClick(() => this.#handleUndo());
+        this.#view.bindNewGameClick(() => this.#handleNewGame());
         this.#renderAndSyncUI({ animate: false });
     }
 
@@ -101,6 +102,15 @@ export class CheckerController {
         this.#renderAndSyncUI({ animate: false });
     }
 
+    #handleNewGame() {
+        this.#model.reset();
+        this.#gameOver = false;
+        this.#mustContinueCapture = false;
+        this.#forcedCapturePieces = [];
+        this.#resetSelection();
+        this.#renderAndSyncUI({ animate: false });
+    }
+
     #renderAndSyncUI({ animate = true } = {}) {
         this.#view.render(this.#model.board, { animate });
 
@@ -113,6 +123,7 @@ export class CheckerController {
             this.#view.highlightCapturablePieces([]);
             this.#view.setWinner(winner);
             this.#view.setUndoEnabled(this.#model.canUndo());
+            this.#view.setNewGameEnabled(true);
             return;
         }
 
@@ -124,6 +135,15 @@ export class CheckerController {
         this.#view.highlightCapturablePieces(mustCapture ? this.#forcedCapturePieces : []);
 
         this.#view.setUndoEnabled(this.#model.canUndo());
+        this.#view.setNewGameEnabled(true);
+
+        if (this.#selectedCoords) {
+            this.#view.highlightCell(this.#selectedCoords.r, this.#selectedCoords.c);
+            this.#view.highlightMoves(this.#availableMoves);
+        } else {
+            this.#view.highlightCell(null, null);
+            this.#view.highlightMoves([]);
+        }
     }
 
     #resetSelection() {
