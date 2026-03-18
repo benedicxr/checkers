@@ -21,6 +21,55 @@ export class CheckerModel {
         this.#history = [];
     }
 
+    exportState() {
+        return {
+            version: 1,
+            model: {
+                turn: this.#turn,
+                nextId: this.#nextId,
+                board: this.#board.toSnapshot().map(row => row.map(cell => (cell ? { ...cell } : null))),
+                history: this.#history.map(h => ({
+                    turn: h.turn,
+                    nextId: h.nextId,
+                    board: h.board.map(row => row.map(cell => (cell ? { ...cell } : null))),
+                })),
+            },
+        };
+    }
+
+    importState(state) {
+        try {
+            if (!state || typeof state !== "object") return false;
+            if (state.version !== 1) return false;
+            if (!state.model || typeof state.model !== "object") return false;
+
+            const { turn, nextId, board, history } = state.model;
+            if (turn !== GAME_CONFIG.WHITE_PLAYER && turn !== GAME_CONFIG.BLACK_PLAYER) return false;
+            if (!Number.isInteger(nextId) || nextId < 1) return false;
+            if (!this.#isValidBoardSnapshot(board)) return false;
+
+            const normalizedHistory = Array.isArray(history) ? history : [];
+            for (const h of normalizedHistory) {
+                if (!h || typeof h !== "object") return false;
+                if (h.turn !== GAME_CONFIG.WHITE_PLAYER && h.turn !== GAME_CONFIG.BLACK_PLAYER) return false;
+                if (!Number.isInteger(h.nextId) || h.nextId < 1) return false;
+                if (!this.#isValidBoardSnapshot(h.board)) return false;
+            }
+
+            this.#turn = turn;
+            this.#nextId = nextId;
+            this.#board = this.#boardFromSnapshot(board);
+            this.#history = normalizedHistory.map(h => ({
+                turn: h.turn,
+                nextId: h.nextId,
+                board: h.board.map(row => row.map(cell => (cell ? { ...cell } : null))),
+            }));
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     #initializeModel() {
         const initialPieceRows = GAME_RULES.INITIAL_PIECE_ROWS;
 
@@ -130,14 +179,7 @@ export class CheckerModel {
         const prev = this.#history.pop();
         this.#turn = prev.turn;
         this.#nextId = prev.nextId;
-        this.#board = new Board();
-        for (let r = 0; r < GAME_CONFIG.ROWS; r++) {
-            for (let c = 0; c < GAME_CONFIG.COLS; c++) {
-                const cell = prev.board[r][c];
-                if (!cell) continue;
-                this.#board.setPiece(r, c, new Checker(cell.color, { id: cell.id, isKing: cell.isKing }));
-            }
-        }
+        this.#board = this.#boardFromSnapshot(prev.board);
         return true;
     }
 
@@ -147,6 +189,33 @@ export class CheckerModel {
             nextId: this.#nextId,
             board: this.#board.toSnapshot().map(row => row.map(cell => (cell ? { ...cell } : null))),
         };
+    }
+
+    #isValidBoardSnapshot(board) {
+        if (!Array.isArray(board) || board.length !== GAME_CONFIG.ROWS) return false;
+        for (const row of board) {
+            if (!Array.isArray(row) || row.length !== GAME_CONFIG.COLS) return false;
+            for (const cell of row) {
+                if (cell === null) continue;
+                if (!cell || typeof cell !== "object") return false;
+                if (!Number.isInteger(cell.id) || cell.id < 1) return false;
+                if (cell.color !== GAME_CONFIG.WHITE_PLAYER && cell.color !== GAME_CONFIG.BLACK_PLAYER) return false;
+                if (typeof cell.isKing !== "boolean") return false;
+            }
+        }
+        return true;
+    }
+
+    #boardFromSnapshot(snapshot) {
+        const board = new Board();
+        for (let r = 0; r < GAME_CONFIG.ROWS; r++) {
+            for (let c = 0; c < GAME_CONFIG.COLS; c++) {
+                const cell = snapshot[r][c];
+                if (!cell) continue;
+                board.setPiece(r, c, new Checker(cell.color, { id: cell.id, isKing: cell.isKing }));
+            }
+        }
+        return board;
     }
 
     #maybePromote(row, piece) {

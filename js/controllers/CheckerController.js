@@ -1,3 +1,5 @@
+import {clearGameState, loadGameState, saveGameState} from "../storage/gameStorage.js";
+
 export class CheckerController {
     #model;
     #view;
@@ -21,7 +23,46 @@ export class CheckerController {
         this.#view.bindCellClick((r, c) => this.#handleCellClick(r, c));
         this.#view.bindUndoClick(() => this.#handleUndo());
         this.#view.bindNewGameClick(() => this.#handleNewGame());
-        this.#renderAndSyncUI({ animate: false });
+        this.#restoreFromStorage();
+        this.#renderAndSyncUI({animate: false});
+    }
+
+    #restoreFromStorage() {
+        const saved = loadGameState();
+        if (!saved) return;
+
+        const ok = this.#model.importState(saved);
+        if (!ok) {
+            clearGameState();
+            return;
+        }
+
+        const chain = saved.controller?.captureChain;
+        if (!chain || !chain.active) return;
+
+        const r = chain.piece?.r;
+        const c = chain.piece?.c;
+        if (!Number.isInteger(r) || !Number.isInteger(c)) return;
+
+        const piece = this.#model.getPiece(r, c);
+        if (!piece || piece.color !== this.#model.turn) return;
+
+        const nextCaptures = this.#model.getCaptures(r, c);
+        if (nextCaptures.length === 0) return;
+
+        this.#mustContinueCapture = true;
+        this.#selectedCoords = {r, c};
+        this.#availableMoves = nextCaptures;
+    }
+
+    #persistToStorage() {
+        const state = this.#model.exportState();
+        state.controller = {
+            captureChain: this.#mustContinueCapture && this.#selectedCoords
+                ? {active: true, piece: {...this.#selectedCoords}}
+                : {active: false},
+        };
+        saveGameState(state);
     }
 
     #handleCellClick(row, col) {
@@ -29,7 +70,7 @@ export class CheckerController {
 
         const clickedMove = this.#availableMoves.find(m => m.r === row && m.c === col);
         if (clickedMove) {
-            this.#applyMove(clickedMove, { r: row, c: col });
+            this.#applyMove(clickedMove, {r: row, c: col});
             return;
         }
 
@@ -52,8 +93,8 @@ export class CheckerController {
             }
         }
 
-        this.#selectedCoords = { r: row, c: col };
-        this.#availableMoves = this.#model.getValidMoves(row, col, { mustCapture });
+        this.#selectedCoords = {r: row, c: col};
+        this.#availableMoves = this.#model.getValidMoves(row, col, {mustCapture});
 
         this.#view.highlightCell(row, col);
         this.#view.highlightMoves(this.#availableMoves);
@@ -68,15 +109,16 @@ export class CheckerController {
         }
 
         if (move.type === "move") {
-            this.#model.applyMove(from, to, move, { switchTurn: true });
+            this.#model.applyMove(from, to, move, {switchTurn: true});
             this.#mustContinueCapture = false;
             this.#resetSelection();
             this.#renderAndSyncUI();
+            this.#persistToStorage();
             return;
         }
 
-        this.#model.applyMove(from, to, move, { switchTurn: false });
-        this.#selectedCoords = { r: to.r, c: to.c };
+        this.#model.applyMove(from, to, move, {switchTurn: false});
+        this.#selectedCoords = {r: to.r, c: to.c};
 
         const nextCaptures = this.#model.getCaptures(to.r, to.c);
         if (nextCaptures.length > 0) {
@@ -85,7 +127,8 @@ export class CheckerController {
             this.#renderAndSyncUI();
             this.#view.highlightCell(to.r, to.c);
             this.#view.highlightMoves(this.#availableMoves);
-            this.#view.highlightCapturablePieces([{ r: to.r, c: to.c }]);
+            this.#view.highlightCapturablePieces([{r: to.r, c: to.c}]);
+            this.#persistToStorage();
             return;
         }
 
@@ -93,13 +136,15 @@ export class CheckerController {
         this.#mustContinueCapture = false;
         this.#resetSelection();
         this.#renderAndSyncUI();
+        this.#persistToStorage();
     }
 
     #handleUndo() {
         if (!this.#model.undo()) return;
         this.#mustContinueCapture = false;
         this.#resetSelection();
-        this.#renderAndSyncUI({ animate: false });
+        this.#renderAndSyncUI({animate: false});
+        this.#persistToStorage();
     }
 
     #handleNewGame() {
@@ -108,11 +153,12 @@ export class CheckerController {
         this.#mustContinueCapture = false;
         this.#forcedCapturePieces = [];
         this.#resetSelection();
-        this.#renderAndSyncUI({ animate: false });
+        this.#renderAndSyncUI({animate: false});
+        this.#persistToStorage();
     }
 
-    #renderAndSyncUI({ animate = true } = {}) {
-        this.#view.render(this.#model.board, { animate });
+    #renderAndSyncUI({animate = true} = {}) {
+        this.#view.render(this.#model.board, {animate});
 
         const winner = this.#model.getWinner();
         if (winner) {
@@ -130,9 +176,14 @@ export class CheckerController {
         this.#gameOver = false;
         this.#view.setTurn(this.#model.turn);
 
-        const mustCapture = this.#model.playerHasCapture(this.#model.turn);
-        this.#forcedCapturePieces = mustCapture ? this.#model.getCapturingPieces(this.#model.turn) : [];
-        this.#view.highlightCapturablePieces(mustCapture ? this.#forcedCapturePieces : []);
+        if (this.#mustContinueCapture && this.#selectedCoords) {
+            this.#forcedCapturePieces = [];
+            this.#view.highlightCapturablePieces([{...this.#selectedCoords}]);
+        } else {
+            const mustCapture = this.#model.playerHasCapture(this.#model.turn);
+            this.#forcedCapturePieces = mustCapture ? this.#model.getCapturingPieces(this.#model.turn) : [];
+            this.#view.highlightCapturablePieces(mustCapture ? this.#forcedCapturePieces : []);
+        }
 
         this.#view.setUndoEnabled(this.#model.canUndo());
         this.#view.setNewGameEnabled(true);
