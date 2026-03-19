@@ -7,6 +7,8 @@ export class CheckerView {
     #newGameButton;
     #overlayElement;
     #onCellClick = null;
+    #dragFrom = null;
+    #dropHoverCell = null;
 
     constructor(boardElementId, { turnElementId = null, undoButtonId = null, newGameButtonId = null } = {}) {
         this.#boardElement = document.getElementById(boardElementId);
@@ -17,6 +19,7 @@ export class CheckerView {
         this.#createStaticGrid();
         this.#ensureOverlay();
         this.#attachListeners();
+        this.#attachDndListeners();
     }
 
     bindCellClick(handler) {
@@ -68,6 +71,81 @@ export class CheckerView {
 
             this.#onCellClick(row, col);
         });
+    }
+
+    #attachDndListeners() {
+        this.#boardElement.addEventListener("dragstart", (event) => {
+            if (!this.#onCellClick) return;
+
+            const piece = event.target.closest(`.${CSS_CLASSES.PIECE}`);
+            if (!piece || !this.#boardElement.contains(piece)) return;
+
+            const cell = piece.closest(`.${CSS_CLASSES.CELL}`);
+            if (!cell) return;
+
+            const r = Number(cell.dataset.row);
+            const c = Number(cell.dataset.col);
+            if(!Number.isInteger(r) || !Number.isInteger(c)) return;
+
+            this.#dragFrom = {r, c};
+
+            this.#onCellClick(r, c);
+
+            event.dataTransfer?.setData("text/plain", `${r}, ${c}`);
+            if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+
+        });
+
+        this.#boardElement.addEventListener("dragover", (event) => {
+            const cell = event.target.closest(`.${CSS_CLASSES.CELL}`);
+            if (!cell || !this.#boardElement.contains(cell)) return;
+
+            const isValidDrop = cell.classList.contains(CSS_CLASSES.AVAILABLE_STEP);
+            if (!isValidDrop) {
+                this.#setDropHover(null);
+                return;
+            }
+
+            event.preventDefault();
+            if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+            this.#setDropHover(cell);
+        });
+
+        this.#boardElement.addEventListener("dragleave", (event) => {
+            const cell = event.target.closest(`.${CSS_CLASSES.CELL}`);
+            if (cell && cell === this.#dropHoverCell) this.#setDropHover(null);
+        });
+
+        this.#boardElement.addEventListener("drop", (event) => {
+            if (!this.#onCellClick) return;
+            const cell = event.target.closest(`.${CSS_CLASSES.CELL}`);
+            if (!cell || !this.#boardElement.contains(cell)) return;
+
+            const isValidDrop = cell.classList.contains(CSS_CLASSES.AVAILABLE_STEP);
+            if (!isValidDrop) return;
+
+            event.preventDefault();
+
+            const r = Number(cell.dataset.row);
+            const c = Number(cell.dataset.col);
+            if(!Number.isInteger(r) || !Number.isInteger(c)) return;
+
+            this.#onCellClick(r, c);
+            this.#dragFrom = null;
+            this.#setDropHover(null);
+        });
+
+        this.#boardElement.addEventListener("dragend", (event) => {
+            this.#dragFrom = null;
+            this.#setDropHover(null);
+        });
+    }
+
+    #setDropHover(cellEl) {
+        if (this.#dropHoverCell === cellEl) return;
+        if (this.#dropHoverCell) this.#dropHoverCell.classList.remove("drop-target");
+        this.#dropHoverCell = cellEl;
+        if (this.#dropHoverCell) this.#dropHoverCell.classList.add("drop-target");
     }
 
     #createStaticGrid() {
@@ -166,6 +244,7 @@ export class CheckerView {
         piece.classList.add(checker.color === GAME_CONFIG.WHITE_PLAYER ? CSS_CLASSES.WHITE_PIECE : CSS_CLASSES.BLACK_PIECE);
         if (checker.isKing) piece.classList.add(CSS_CLASSES.KING);
         if (checker.id != null) piece.dataset.id = String(checker.id);
+        piece.draggable = true;
         return piece;
     }
 

@@ -338,3 +338,8 @@ body {
     text-align: center;
     font-size: var(--cell-size);
 }
+
+#drop-target {
+    outline: 3px solid var(--accent);
+    outline-offset: -3px;
+}
