@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     turnElementId: "turn-indicator",
     undoButtonId: "undo-btn",
     newGameButtonId: "new-game-btn",
+    historyElementId: "move-history",
   });
   new CheckerController(model, view);
 });

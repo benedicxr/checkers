@@ -5,6 +5,13 @@ export const GAME_CONFIG = {
   BLACK_PLAYER: 2,
 } as const;
 
+export const CLOCK_CONFIG = {
+  ENABLED: true,
+  INITIAL_TIME_MS: 5 * 60 * 1000,
+  TICK_INTERVAL_MS: 200,
+  LOW_TIME_MS: 30 * 1000,
+} as const;
+
 export const GAME_RULES = {
   INITIAL_PIECE_ROWS: 3,
   MOVE_STEP: 1,

@@ -1,7 +1,8 @@
-import { GAME_CONFIG, GAME_RULES, CSS_CLASSES } from "../constants";
+import { CLOCK_CONFIG, GAME_CONFIG, GAME_RULES, CSS_CLASSES } from "../constants";
 import type { BoardSnapshot, CheckerSnapshot, Coords, Move, Player } from "../types";
 
 type CellClickHandler = (row: number, col: number) => void;
+type HistoryClickHandler = (moveId: number) => void;
 
 export class CheckerView {
   #boardElement: HTMLElement;
@@ -13,10 +14,25 @@ export class CheckerView {
   #dragFrom: Coords | null = null;
   #dropHoverCell: HTMLElement | null = null;
 
+  #clockWhiteEl: HTMLElement | null = null;
+  #clockBlackEl: HTMLElement | null = null;
+
+  #historyElement: HTMLElement | null = null;
+  #onHistoryClick: HistoryClickHandler | null = null;
+  #historyMarkedCells: HTMLElement[] = [];
+
   constructor(
     boardElementId: string,
-    { turnElementId = null, undoButtonId = null, newGameButtonId = null }:
-      | { turnElementId?: string | null; undoButtonId?: string | null; newGameButtonId?: string | null }
+    { turnElementId = null,
+      undoButtonId = null,
+      newGameButtonId = null,
+      historyElementId = null,
+    }:
+      | { turnElementId?: string | null;
+      undoButtonId?: string | null;
+      newGameButtonId?: string | null;
+      historyElementId?: string | null;
+    }
       | undefined = {},
   ) {
     const boardEl = document.getElementById(boardElementId);
@@ -26,11 +42,14 @@ export class CheckerView {
     this.#turnElement = turnElementId ? document.getElementById(turnElementId) : null;
     this.#undoButton = undoButtonId ? (document.getElementById(undoButtonId) as HTMLButtonElement | null) : null;
     this.#newGameButton = newGameButtonId ? (document.getElementById(newGameButtonId) as HTMLButtonElement | null) : null;
+    this.#historyElement = historyElementId ? document.getElementById(historyElementId) : null;
 
     this.#createStaticGrid();
     this.#ensureOverlay();
+    this.#ensureClocks();
     this.#attachListeners();
     this.#attachDndListeners();
+    this.#attachHistoryListeners();
   }
 
   bindCellClick(handler: CellClickHandler): void {
@@ -45,6 +64,10 @@ export class CheckerView {
   bindNewGameClick(handler: () => void): void {
     if (!this.#newGameButton) return;
     this.#newGameButton.addEventListener("click", handler);
+  }
+
+  bindMoveHistoryClick(handler: HistoryClickHandler): void {
+    this.#onHistoryClick = handler;
   }
 
   setUndoEnabled(enabled: boolean): void {
@@ -69,6 +92,38 @@ export class CheckerView {
     this.#turnElement.textContent = winner === GAME_CONFIG.WHITE_PLAYER ? "Winner: White" : "Winner: Black";
   }
 
+  setClocks({
+    enabled,
+    whiteMs,
+    blackMs,
+    activePlayer,
+  }: {
+    enabled: boolean;
+    whiteMs: number;
+    blackMs: number;
+    activePlayer: Player;
+  }): void {
+    if (!this.#clockWhiteEl || !this.#clockBlackEl) return;
+
+    if (!enabled) {
+      this.#clockWhiteEl.textContent = "";
+      this.#clockBlackEl.textContent = "";
+      this.#clockWhiteEl.classList.remove("active", "low");
+      this.#clockBlackEl.classList.remove("active", "low");
+      return;
+    }
+
+    this.#clockWhiteEl.textContent = `White ${CheckerView.#formatTime(whiteMs)}`;
+    this.#clockBlackEl.textContent = `Black ${CheckerView.#formatTime(blackMs)}`;
+
+    const whiteActive = activePlayer === GAME_CONFIG.WHITE_PLAYER;
+    this.#clockWhiteEl.classList.toggle("active", whiteActive);
+    this.#clockBlackEl.classList.toggle("active", !whiteActive);
+
+    this.#clockWhiteEl.classList.toggle("low", whiteMs <= CLOCK_CONFIG.LOW_TIME_MS);
+    this.#clockBlackEl.classList.toggle("low", blackMs <= CLOCK_CONFIG.LOW_TIME_MS);
+  }
+
   #attachListeners(): void {
     this.#boardElement.addEventListener("click", (event: MouseEvent) => {
       if (!this.#onCellClick) return;
@@ -82,6 +137,23 @@ export class CheckerView {
       if (Number.isNaN(row) || Number.isNaN(col)) return;
 
       this.#onCellClick(row, col);
+    });
+  }
+
+  #attachHistoryListeners(): void {
+    if (!this.#historyElement) return;
+
+    this.#historyElement.addEventListener("click", (event: MouseEvent) => {
+      if (!this.#onHistoryClick) return;
+      if (!(event.target instanceof Element)) return;
+
+      const btn = event.target.closest<HTMLElement>("[data-move-id]");
+      if (!btn || !this.#historyElement!.contains(btn)) return;
+
+      const id = Number(btn.getAttribute("data-move-id"));
+      if (!Number.isInteger(id)) return;
+
+      this.#onHistoryClick(id);
     });
   }
 
@@ -186,6 +258,45 @@ export class CheckerView {
     this.#boardElement.appendChild(this.#overlayElement);
   }
 
+  #ensureClocks(): void {
+    if (!this.#turnElement) return;
+    const parent = this.#turnElement.parentElement;
+    if (!parent) return;
+
+    const existing = parent.querySelector<HTMLElement>(".clocks");
+    if (existing) {
+      this.#clockWhiteEl = existing.querySelector<HTMLElement>('[data-clock="white"]');
+      this.#clockBlackEl = existing.querySelector<HTMLElement>('[data-clock="black"]');
+      return;
+    }
+
+    const clocks = document.createElement("div");
+    clocks.className = "clocks";
+
+    const white = document.createElement("div");
+    white.className = "clock clock-white";
+    white.dataset.clock = "white";
+
+    const black = document.createElement("div");
+    black.className = "clock clock-black";
+    black.dataset.clock = "black";
+
+    clocks.appendChild(white);
+    clocks.appendChild(black);
+    parent.appendChild(clocks);
+
+    this.#clockWhiteEl = white;
+    this.#clockBlackEl = black;
+  }
+
+  static #formatTime(ms: number): string {
+    const safe = Number.isFinite(ms) ? Math.max(0, Math.floor(ms)) : 0;
+    const totalSeconds = Math.floor(safe / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
   render(boardModel: BoardSnapshot, { animate = true }: { animate?: boolean } = {}): void {
     const oldPieces = [...this.#boardElement.querySelectorAll<HTMLElement>(`.${CSS_CLASSES.PIECE}[data-id]`)];
     const oldRects = new Map(oldPieces.map((p) => [p.dataset.id!, p.getBoundingClientRect()]));
@@ -250,6 +361,56 @@ export class CheckerView {
       });
     });
   }
+
+  renderMoveHistory(
+    moves: ReadonlyArray<{ id: number; text: string }>,
+    { activeId = null }: { activeId?: number | null } = {},
+  ): void {
+    if (!this.#historyElement) return;
+
+    const title = document.createElement("div");
+    title.className = "history-title";
+    title.textContent = "Move history";
+
+    const list = document.createElement("ol");
+    list.className = "history-list";
+
+    moves.forEach((move, idx) => {
+      const li = document.createElement("li");
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "history-move";
+      if (activeId != null && move.id === activeId) btn.classList.add("active");
+      btn.dataset.moveId = String(move.id);
+      btn.textContent = `${idx + 1}. ${move.text}`;
+
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+    this.#historyElement.replaceChildren(title, list);
+  }
+
+  clearHistoryHighlight(): void {
+    this.#historyMarkedCells.forEach((el) => el.classList.remove("history-mark", "history-start", "history-end"));
+    this.#historyMarkedCells = [];
+  }
+
+  highlightHistoryPath(path: ReadonlyArray<Coords> | null): void {
+    this.clearHistoryHighlight();
+    if (!path || path.length === 0) return;
+
+    path.forEach((p, i) => {
+      const cell = this.#boardElement.querySelector<HTMLElement>(`[data-row="${p.r}"][data-col="${p.c}"]`);
+      if (!cell) return;
+
+      cell.classList.add("history-mark");
+      if (i === 0) cell.classList.add("history-start");
+      if (i === path.length - 1) cell.classList.add("history-end");
+      this.#historyMarkedCells.push(cell);
+    });
+  }
+
 
   #isBlackCell(row: number, col: number): boolean {
     return (row + col) % GAME_RULES.DARK_CELL_MOD === GAME_RULES.DARK_CELL_REMAINDER;

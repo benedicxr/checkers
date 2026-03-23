@@ -48,8 +48,23 @@ export interface CaptureChainState {
   piece?: Coords;
 }
 
+export interface SerializableClockSnapshot {
+  whiteMs: number;
+  blackMs: number;
+  activePlayer: Player;
+  running: boolean;
+}
+
+export interface SerializableClockState extends SerializableClockSnapshot {
+  enabled: boolean;
+  initialMs: number;
+  lastUpdateUnixMs: number;
+  history?: SerializableClockSnapshot[];
+}
+
 export interface SerializableControllerState {
   captureChain?: CaptureChainState;
+  clock?: SerializableClockState;
 }
 
 export type PersistedGameState = {
@@ -57,3 +72,10 @@ export type PersistedGameState = {
   model: SerializableModelState;
   controller?: SerializableControllerState;
 };
+
+export type MoveHistoryEntry = Readonly <{
+  id: number;
+  player: Player;
+  text: string;
+  path: Coords[];
+}>;
